@@ -1,171 +1,138 @@
 ---
-title: "関数に名前付きで引数を渡したい feat. JavaScript"
-emoji: "🤓"
+title: "関数に名前付きで引数を渡したい"
+emoji: "💂"
 type: "tech"
 topics:
   - "JavaScript"
-  - "typescript"
-  - "関数"
+  - "TypeScript"
+  - "引数"
+  - "オブジェクト"
   - "分割代入"
 published: false
 ---
-
-## メモ
-
-- プロパティの順番ごちゃ混ぜパターン（オブジェクトありなし両方）
-- プロパティの数を減らしたい
 
 ## はじめに
 
 JavaScriptってなんで名前付きで引数を渡せないんだ？と思ったことありませんか？
 
-```python
-def print_baseball_team(
-    pitcher,
-    catcher,
-    first_base,
-    second_base,
-    third_base,
-    shortstop,
-    left_field,
-    center_field,
-    right_field,
-    manager,
-    *substitutes
-):
-    print("=== 野球チームメンバー ===")
-    print(f"投手: {pitcher}")
-    print(f"捕手: {catcher}")
-    print(f"一塁手: {first_base}")
-    print(f"二塁手: {second_base}")
-    print(f"三塁手: {third_base}")
-    print(f"遊撃手: {shortstop}")
-    print(f"左翼手: {left_field}")
-    print(f"中堅手: {center_field}")
-    print(f"右翼手: {right_field}")
-    print(f"監督: {manager}")
-    
-    if substitutes:
-        print(f"控え: {', '.join(substitutes)}")
+例えば、このコードであればどうでしょうか。
 
-# 使用例
-print_baseball_team(
-    pitcher="伊藤博文",
-    catcher="西郷隆盛",
-    first_base="武蔵坊弁慶",
-    second_base="源義経",
-    third_base="中臣鎌足",
-    shortstop="小野妹子",
-    left_field="徳川家康",
-    center_field="豊臣秀吉",
-    right_field="織田信長",
-    manager="諸葛亮孔明",
-    "木下藤吉郎",
-    "木下藤吉郎秀吉",
-    "羽柴秀吉"
-)
+```typescript
+function repeatText(text, count) {
+  return text.repeat(count)
+}
+console.log(repeatText("ボ", 7))  // => ボボボボボボボ
+console.log(repeatText(7, "ボ"))  // => Uncaught TypeError: text.repeat is not a function
 ```
+
+関数は別のファイルなどで定義されており、関数呼び出ししている箇所だけが見えている状態という前提です。このコードであれば、「ボ」というテキストが7回繰り返しされるんだろうなというのは、関数名や引数を見ればなんとなく想像できます。
+引数を渡す順番も重要になります。前後入れ替えてしまうと、repeatメソッドは使えないよとエラーを投げられてしまいます。
+
+一方、以下のようなコードであればどうでしょうか。
+
+```typescript
+function repeatText(beginingText, text, pattern, joiner, endingText) {
+  const result = pattern.map(n => text.repeat(n)).join(joiner);
+  return beginingText + result + endingText;
+}
+console.log(
+  repeatText("「", "ボ", 7, [3, 2, 2], "ー", "爆誕」")
+)  // => 「ボボボーボボーボボ爆誕」
+```
+
+関数呼び出しの部分だけを見て、まさか「ボボボーボボーボボ爆誕」という文字列がコンソールに出力するなんて思う人はいませんよね。勘の良い人を除いて。
+
+この記事ではこのコードを修正することで、引数をどの順番で渡しても問題なく、関数呼び出しの部分だけを見て、「ボボボーボボーボボ爆誕」と表示されることを理解できるような状態にしていきます。
+
+まとめると、この記事で行えるようにしたいことは
+
+- 引数を渡す順番を気にしなくてもいいようにしたい
+- 関数呼び出し部分だけを見て、
 
 ## オブジェクトを渡してみる
 
+ここから先はボボボーボボーボボを使って説明を進めていきます。
+
 ```typescript
-interface BaseballTeamProps {
+type repeatTextProps = {
+  beginingText: string,
+  text: string,
+  pattern: number[],
+  joiner: string,
+  endingText: string,
+}
+
+function repeatText(props: repeatTextProps) {
+  const result = props.pattern.map(n => props.text.repeat(n)).join(props.joiner);
+  return props.beginingText + result + props.endingText;
+}
+console.log(
+  repeatText({
+    beginingText: "「",
+    text: "ボ",
+    pattern: [3, 2, 2],
+    joiner: "ー",
+    endingText: "爆誕」"
+  })
+)
+```
+
+なんなら、引数を渡す順序を分かりやすく変えてしまってもいいかもしれませんね。
+
+```typescript
+type repeatTextProps = {
   // 省略
 }
 
-function printBaseballTeam(props: BaseballTeamProps): void {
-  console.log("=== 野球チームメンバー ===");
-  console.log(`投手: ${props.pitcher}`);
-  console.log(`捕手: ${props.catcher}`);
-  console.log(`一塁手: ${props.firstBase}`);
-  console.log(`二塁手: ${props.secondBase}`);
-  console.log(`三塁手: ${props.thirdBase}`);
-  console.log(`遊撃手: ${props.shortstop}`);
-  console.log(`左翼手: ${props.leftField}`);
-  console.log(`中堅手: ${props.centerField}`);
-  console.log(`右翼手: ${props.rightField}`);
-  console.log(`監督: ${props.manager}`);
-  
-  if (props.substitutes.length > 0) {
-    console.log(`\n控え: ${props.substitutes.join(", ")}`);
-  }
+function repeatText(props: repeatTextProps) {
+  const result = props.pattern.map(n => props.text.repeat(n)).join(props.joiner);
+  return props.beginingText + result + props.endingText;
 }
-
-// 使用例
-printBaseballTeam({
-  pitcher: "伊藤博文",
-  catcher: "西郷隆盛",
-  firstBase: "武蔵坊弁慶",
-  secondBase: "源義経",
-  thirdBase: "中臣鎌足",
-  shortstop: "小野妹子",
-  leftField: "徳川家康",
-  centerField: "豊臣秀吉",
-  rightField: "織田信長",
-  manager: "諸葛亮孔明",
-  substitutes: ["木下藤吉郎", "木下藤吉郎秀吉", "羽柴秀吉"]
-});
+console.log(
+  repeatText({
+    text: "ボ",
+    joiner: "ー",
+    pattern: [3, 2, 2],
+    beginingText: "「",
+    endingText: "爆誕」"
+  })
+)
 ```
+
+始めのコードと比べると、ボボボーボボーボボ臭がだいぶ強く感じられるようになったかと思います。大成功です。
 
 VSCodeの画面のスクショ？？
 
 ## 分割代入で受け取ってみる
 
-VSCodeの画面のスクショ？？
+直前のコードを見て思った方もいらっしゃると思いますが、propsという接頭辞のような振る舞いをしている部分が邪魔ですよね。これは分割代入を使用することで回避することができます。
 
 ```typescript
-interface BaseballTeamProps {
+type repeatTextProps = {
   // 省略
 }
 
-function printBaseballTeam({
-  pitcher,
-  catcher,
-  firstBase,
-  secondBase,
-  thirdBase,
-  shortstop,
-  leftField,
-  centerField,
-  rightField,
-  manager,
-  substitutes
-}: BaseballTeamProps): void {
-  console.log("=== 野球チームメンバー ===");
-  console.log(`投手: ${pitcher}`);
-  console.log(`捕手: ${catcher}`);
-  console.log(`一塁手: ${firstBase}`);
-  console.log(`二塁手: ${secondBase}`);
-  console.log(`三塁手: ${thirdBase}`);
-  console.log(`遊撃手: ${shortstop}`);
-  console.log(`左翼手: ${leftField}`);
-  console.log(`中堅手: ${centerField}`);
-  console.log(`右翼手: ${rightField}`);
-  console.log(`監督: ${manager}`);
-  
-  if (substitutes.length > 0) {
-    console.log(`\n控え: ${substitutes.join(", ")}`);
-  }
+function repeatText({beginingText, text, pattern, joiner, endingText}: repeatTextProps) {
+  const result = pattern.map(n => text.repeat(n)).join(joiner);
+  return beginingText + result + endingText;
 }
-
-// 使用例
-printBaseballTeam({
-  pitcher: "伊藤博文",
-  catcher: "西郷隆盛",
-  firstBase: "武蔵坊弁慶",
-  secondBase: "源義経",
-  thirdBase: "中臣鎌足",
-  shortstop: "小野妹子",
-  leftField: "徳川家康",
-  centerField: "豊臣秀吉",
-  rightField: "織田信長",
-  manager: "諸葛亮孔明",
-  substitutes: ["木下藤吉郎", "木下藤吉郎秀吉", "羽柴秀吉"]
-});
+console.log(
+  repeatText({
+    text: "ボ",
+    joiner: "ー",
+    pattern: [3, 2, 2],
+    beginingText: "「",
+    endingText: "爆誕」"
+  })
+)
 ```
+
+全体としてだいぶスッキリした気がします。
+この記事ももう終盤ですけど、そろそろコード全体がボボボーボボーボボに見えてきましたよね。
 
 ## まとめ
 
-pointer: noneでも十分だね
-
-あと作成しながら思っていましたが、もっと説明しやすい例ありますよね。〜とか〜とか。縦に長すぎて見づらいですよね
+ボボボーボボーボボを感じ取れるようになってください。
+好きになったよね？？
+https://www.toei-anim.co.jp/tv/bo-bobo/
+https://x.com/bo_bobo_info
