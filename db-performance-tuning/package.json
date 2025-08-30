@@ -1,0 +1,12 @@
+{
+  "name": "db-performance-tuning",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "5441": "node src/5411-btree-index.js"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "pg": "^8.13.0"
+  }
+}

@@ -1,4 +1,4 @@
-FROM postgres:16
+FROM postgres:17.6
 
 ENV POSTGRES_USER=user \
     POSTGRES_PASSWORD=password \
@@ -8,12 +8,9 @@ COPY sql/01_init.sql /docker-entrypoint-initdb.d/01_init.sql
 COPY sql/02_seed.sql /docker-entrypoint-initdb.d/02_seed.sql
 COPY sql/03_make_index.sql /docker-entrypoint-initdb.d/03_make_index.sql
 
-CMD [ 
-  "postgres",
-  "-c",
-  "maintenance_work_mem=1GB",
-  "-c",
-  "track_io_timing=on",
-  "-c",
-  "shared_preload_libraries=pg_stat_statements"
+CMD [ \
+  "postgres", \
+  "-c", "maintenance_work_mem=1GB", \
+  "-c", "track_io_timing=on",  \
+  "-c", "shared_preload_libraries=pg_stat_statements"  \
 ]

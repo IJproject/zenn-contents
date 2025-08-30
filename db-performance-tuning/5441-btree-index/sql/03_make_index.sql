@@ -1,6 +1,7 @@
 \echo '[03_make_index.sql] start'
 
 SET client_min_messages = WARNING;
+SET LOCAL maintenance_work_mem = '2GB';
 
 CREATE INDEX IF NOT EXISTS idx_single_price   ON single_b_tree_products (price);
 
