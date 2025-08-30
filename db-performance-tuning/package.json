@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "5441": "node src/5411-btree-index.js"
+    "5441": "node scripts/5411-btree-index.js"
   },
   "dependencies": {
     "dotenv": "^16.4.5",
