@@ -17,7 +17,7 @@ export async function query(text, params) {
   try {
     const res = await client.query(text, params);
     const ms = Number(process.hrtime.bigint() - started) / 1e6;
-    return { rows: res.rows, rowCount: res.rowCount, resSpeed: ms };
+    return { rows: res.rows, rowCount: res.rowCount, resTime: ms };
   } finally {
     client.release();
   }
