@@ -3,7 +3,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "5441": "node scripts/5411-btree-index.js"
+    "5441": "node scripts/5441-btree-index.js",
+    "5442": "node scripts/5442-partition.js"
   },
   "dependencies": {
     "dotenv": "^16.4.5",
