@@ -3,7 +3,11 @@ title: "新米エンジニアが「書籍学習の効率化」を追求してみ
 emoji: "📚"
 type: "idea"
 topics:
-  - "cs"
+  - "学習"
+  - "勉強"
+  - "本"
+  - "書籍"
+  - "AI"
 published: false
 ---
 
@@ -137,7 +141,7 @@ https://kanki-pub.co.jp/pub/book/9784761271763/
 :::details ノートサンプル
 本来最終行には、学習した内容のまとめを入れる必要があるのですが、私はアクティブリコールをすることが目的でコーネルルールを採用しているので使用していません。
 ※ 間違ったことが書いてあったら申し訳ありません。
-![](/images/how-to-study/cornell2.png)
+![](/images/how-to-study/cornell.png)
 :::
 
 
