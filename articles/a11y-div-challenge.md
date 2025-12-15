@@ -3,103 +3,538 @@ title: "キーボードだけで操作できるWEBアプリを作りたい"
 emoji: "🫶"
 type: "idea"
 topics:
-  - "アクセシビリティ"
   - "a11y"
   - "waiaria"
 published: false
 ---
 
-## 0. はじめに
+※この記事は [アップルワールド Advent Calendar 2025](https://qiita.com/advent-calendar/2025/appleworld) 20日目の記事です。
 
 ## 1. 概要
+
+この記事では、以下の制約を設けてログインフォームを作成していきます。
+
+使用してもよいHTMLタグは、以下の2種類のみとして進めます。
+
+- form系のタグ（input, select など）
+- ネイティブセマンティクスを持たない div タグのみ
 
 ## 2. 準備
 
 ### 2-1. 知識のインプット
 
+実装を始める前に、アクセシビリティとユーザビリティに関してのインプットを行いました。
+アクセシビリティといえばWAI-ARIAですが、これ以外にもAOM（アクセシビリティオブジェクトモデル）の存在など、今までに出会ったことのなかった事柄に触れることができ、腰を据えて読んだ甲斐があったなと感じる一冊でした。
+
 https://gihyo.jp/book/2023/978-4-297-13366-5
 
 ### 2-2. プロジェクトの作成
 
-Nextjs のデフォルト設定を使用して開発
+最近色んな意味で話題の、Nextjs を使用して実装を行います。
+設定はデフォルトのものを使用して進めていきます。（TypeScript, AppRouter, Tailwind, ESLint, etc.）
 
 https://nextjs.org/docs/app/getting-started/installation
 
-react-hook-form を入れておく
+ログインフォームを作成するので、実装を単純にするためにreact-hook-formとzodを入れておきます。
 
 https://zenn.dev/b13o/articles/about-react-hook-form
 
 ## 3. 汎用コンポーネントの作成
 
+まずは汎用的に使えるコンポーネントを先に実装し、それらを活用してログインフォームを作成する方針で進めていきます。
+
 ### 3-1. ボタン
 
-まずは骨格を以下のように作成します。
-やはり div タグだけで作成するので美しいですね。
+まず始めにButtonコンポーネントから作成していきます。
+最低限Buttonとして使用できる程度での実装を初期状態として、実装を進めていきます。
 
-:::details ダイアログのマークアップ
+:::details Buttonコンポーネントの土台
 
 ```js
-const test = "";
+"use client";
+
+import { forwardRef } from "react";
+
+interface A11yButtonProps
+  extends Omit<React.HTMLAttributes<HTMLDivElement>, "onClick"> {
+  onClick: () => void;
+  children: React.ReactNode;
+}
+
+export const A11yButton = forwardRef<HTMLDivElement, A11yButtonProps>(
+  ({ onClick, children, ...rest }, ref) => {
+    
+    return (
+      <div
+        {...rest}
+        ref={ref}
+        onClick={onClick}
+      >
+        {children}
+      </div>
+    );
+  }
+);
+
+A11yButton.displayName = "A11yButton";
 ```
 
 :::
 
 #### 支援技術にボタンであることを伝える
 
-role
-tabIndex={disabled ? -1 : 0}
+まずは、ただのdivタグである以上、ブラウザにも支援技術にもボタンであることが伝わっていないので、WAI-ARIAのrole属性を付与することにします。
+
+:::details role属性を付与
+
+```diff
+"use client";
+
+import { forwardRef } from "react";
+
+interface A11yButtonProps
+  extends Omit<React.HTMLAttributes<HTMLDivElement>, "onClick"> {
+  onClick: () => void;
+  children: React.ReactNode;
+}
+
+export const A11yButton = forwardRef<HTMLDivElement, A11yButtonProps>(
+  ({ onClick, children, ...rest }, ref) => {
+    
+    return (
+      <div
+        {...rest}
+        ref={ref}
++       role='button'
+        onClick={onClick}
+      >
+        {children}
+      </div>
+    );
+  }
+);
+
+A11yButton.displayName = "A11yButton";
+```
+
+:::
 
 #### キーボードからクリックできるようにする
 
-keydown
+次は、キーボードのみで操作できるように修正していきます。
+
+実装する内容としては、以下の3つです。
+
+- Tabキーでフォーカスを当てることができるようになる
+- フォーカスが当たった状態で Enter キーを押下するとクリック判定になる
+- フォーカスが当たった状態で Space キーを押下して離すとクリック判定になる
+
+※ これらの機能は、buttonタグがデフォルトで持っている機能と全く同じです。
+
+:::details キーボード操作を可能にする
+
+```diff
+"use client";
+
+import { forwardRef } from "react";
+
+interface A11yButtonProps
+  extends Omit<React.HTMLAttributes<HTMLDivElement>, "onClick"> {
+  onClick: () => void;
+  children: React.ReactNode;
+}
+
+export const A11yButton = forwardRef<HTMLDivElement, A11yButtonProps>(
+  ({ onClick, children, ...rest }, ref) => {
++   const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
++     e.preventDefault();
++     onClick();
++   };
+
++   const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
++     if (e.key === "Enter") {
++       e.preventDefault();
++       onClick();
++     } else if (e.key === " ") {
++       // スペースキーの場合はKeyUpでクリックイベントを発火させるので、ここではデフォルトの動作を防ぐだけ
++       e.preventDefault();
++     }
++     rest.onKeyDown?.(e);
++   };
+
++   const handleKeyUp = (e: React.KeyboardEvent<HTMLDivElement>) => {
++     if (e.key === " ") {
++       onClick();
++     }
++     rest.onKeyUp?.(e);
++   };
+    
+    return (
+      <div
+        {...rest}
+        ref={ref}
+        role='button'
++       onClick={handleClick}
++       onKeyUp={handleKeyUp}
++       onKeyDown={handleKeyDown}
+      >
+        {children}
+      </div>
+    );
+  }
+);
+
+A11yButton.displayName = "A11yButton";
+```
+
+:::
+
 
 #### disabled 状態の制御ができるようにする
 
-disabled
+buttonタグには、ニーズが比較的高めなdisabled属性が存在するので、こちらも実装します。
+内容はシンプルで、disabledプロパティを受け取ることができるように変更し、その内容をもとにクリックできるかどうかを制御するだけです。
+
+:::details disabled状態を設定できるようにする
+
+```diff
+"use client";
+
+import { forwardRef } from "react";
+
+interface A11yButtonProps
+  extends Omit<React.HTMLAttributes<HTMLDivElement>, "onClick"> {
+  onClick: () => void;
++ disabled?: boolean;
+  children: React.ReactNode;
+}
+
+export const A11yButton = forwardRef<HTMLDivElement, A11yButtonProps>(
+- ({ onClick, children, ...rest }, ref) => {
++ ({ onClick, disabled = false, children, ...rest }, ref) => {
+    const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
++     if (disabled) return;
+      e.preventDefault();
+      onClick();
+    };
+
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
++     if (disabled) return;
+      if (e.key === "Enter") {
+        e.preventDefault();
+        onClick();
+      } else if (e.key === " ") {
+        // スペースキーの場合はKeyUpでクリックイベントを発火させるので、ここではデフォルトの動作を防ぐだけ
+        e.preventDefault();
+      }
+      rest.onKeyDown?.(e);
+    };
+
+    const handleKeyUp = (e: React.KeyboardEvent<HTMLDivElement>) => {
++     if (disabled) return;
+      if (e.key === " ") {
+        onClick();
+      }
+      rest.onKeyUp?.(e);
+    };
+
+    return (
+      <div
+        {...rest}
+        ref={ref}
+        role='button'
++       aria-disabled={disabled}
+-       tabIndex={0}
++       tabIndex={disabled ? -1 : 0}
+        onClick={handleClick}
+        onKeyUp={handleKeyUp}
+        onKeyDown={handleKeyDown}
+      >
+        {children}
+      </div>
+    );
+  }
+);
+
+A11yButton.displayName = "A11yButton";
+
+```
+
+:::
 
 #### 完成したボタンコンポーネント
 
-GIF 入れたいな
+キーボードからの操作に加え、buttonタグがデフォルトで持っている機能のうちニーズが高いものを実装することができました。
 
-:::details 最終的なボタンコンポーネント（スタイルなし）
+ここに GIF 入れたいな
+
+:::details 最終的なButtonコンポーネント（スタイルなし）
+
+```js
+"use client";
+
+import { forwardRef } from "react";
+
+interface A11yButtonProps
+  extends Omit<React.HTMLAttributes<HTMLDivElement>, "onClick"> {
+  onClick: () => void;
+  disabled?: boolean;
+  children: React.ReactNode;
+}
+
+export const A11yButton = forwardRef<HTMLDivElement, A11yButtonProps>(
+  ({ onClick, disabled = false, children, ...rest }, ref) => {
+    const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
+      if (disabled) return;
+      e.preventDefault();
+      onClick();
+    };
+
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+      if (disabled) return;
+      if (e.key === "Enter") {
+        e.preventDefault();
+        onClick();
+      } else if (e.key === " ") {
+        // スペースキーの場合はKeyUpでクリックイベントを発火させるので、ここではデフォルトの動作を防ぐだけ
+        e.preventDefault();
+      }
+      rest.onKeyDown?.(e);
+    };
+
+    const handleKeyUp = (e: React.KeyboardEvent<HTMLDivElement>) => {
+      if (disabled) return;
+      if (e.key === " ") {
+        onClick();
+      }
+      rest.onKeyUp?.(e);
+    };
+
+    return (
+      <div
+        {...rest}
+        ref={ref}
+        role='button'
+        aria-disabled={disabled}
+        tabIndex={disabled ? -1 : 0}
+        onClick={handleClick}
+        onKeyUp={handleKeyUp}
+        onKeyDown={handleKeyDown}
+      >
+        {children}
+      </div>
+    );
+  }
+);
+
+A11yButton.displayName = "A11yButton";
+
+```
 
 :::
 
 ### 3-2. ダイアログ
 
-まずは骨格を以下のように作成します。
+次はDialogコンポーネントを作成します。
+例に漏れず、土台だけ作成してあるので、そこから実装を進めていきます。
 
 :::details ダイアログのマークアップ
 
+見渡す限り一面の div タグは、やはり美しいですね。
+
 ```js
-const test = "";
+"use client";
+
+import { A11yButton } from "./button";
+
+interface A11yDialogProps {
+  title: string;
+  open: boolean;
+  onClose: () => void;
+  children: React.ReactNode;
+}
+
+export const A11yDialog = ({
+  title,
+  open,
+  onClose,
+  children,
+}: A11yDialogProps) => {
+  if (!open) {
+    return null;
+  }
+
+  return (
+    <div>
+      <div>
+        <A11yButton
+          onClick={onClose}
+        >
+          ×
+        </A11yButton>
+        <div
+          // ダイアログ初期表示時に、フォーカスインジケーターが表示されないようにするためのリセットCSSクラス
+          className='outline-none focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0'
+        >
+          {title}
+        </div>
+        {children}
+      </div>
+    </div>
+  );
+};
+
 ```
 
 :::
 
 #### 支援技術にダイアログであることを伝える
 
-role='dialog' aria-modal aria-labelledby={titleId}
-const titleId = useId();
-id={titleId} role='heading' aria-level={2}
+まずは、ブラウザと支援技術に対してダイアログであることを伝えるために、WAI-ARIAを存分に活用します。
+useIdで一意のキーを作成していますが、こちらは `role='dialog'` が付与された `aria-labelledby` に紐づく要素の中身が、ダイアログを開いたタイミングでスクリーンリーダに読んでもらえる用にするための、アクセシビリティ上での対応です。
+見出しには `<h*>` タグを使用したいところですが、divタグのみという制約があるので、最大限の努力をして `<h2>` に近づけます。
+
+:::details ダイアログのマークアップ
+
+```diff
+"use client";
+
++ import { useId } from "react";
+import { A11yButton } from "./button";
+
+interface A11yDialogProps {
+  title: string;
+  open: boolean;
+  onClose: () => void;
+  children: React.ReactNode;
+}
+
+export const A11yDialog = ({
+  title,
+  open,
+  onClose,
+  children,
+}: A11yDialogProps) => {
++ const titleId = useId();
+
+  if (!open) {
+    return null;
+  }
+
+  return (
+    <div>
+-     <div>
++     <div role='dialog' aria-modal aria-labelledby={titleId}>
+        <A11yButton
+          onClick={onClose}
++         aria-label='ダイアログを閉じる' // しれっと
+        >
+          ×
+        </A11yButton>
+        <div
++         id={titleId}
++         role='heading'
++         aria-level={2}
+          // ダイアログ初期表示時に、フォーカスインジケーターが表示されないようにするためのリセットCSSクラス
+          className='outline-none focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0'
+        >
+          {title}
+        </div>
+        {children}
+      </div>
+    </div>
+  );
+};
+
+```
+
+:::
 
 #### ダイアログ開閉時にフォーカスを移動する
 
-id={titleId} ref={titleRef} role='heading' aria-level={2} tabIndex={-1}
-const triggerRef = useRef<Element | null>(null);
-const titleRef = useRef<HTMLDivElement | null>(null);
-useEffect(() => {
-if (props.open) {
-// ダイアログ開閉直前にフォーカスがあった要素を保存
-const active = document.activeElement;
-if (active instanceof HTMLElement) triggerRef.current = active;
-// ダイアログのタイトルにフォーカスを移動
-titleRef.current?.focus();
-} else {
-// ダイアログを閉じる際には、開く前にフォーカスがあった要素に戻す
-triggerRef.current?.focus();
+次は、ダイアログを開いた際に、ダイアログ内の要素にフォーカスを移すように変更します。
+現状だと、ダイアログを開いたとしても、ダイアログを開く際にクリックしたボタンにフォーカスが当たったままになってしまいます。
+
+ダイアログを閉じた際にも、ダイアログ内にフォーカスからフォーカスを返さないといけないことを考えて、以下のようなフローを考えます。
+
+1. ダイアログを開く直前、フォーカスが当たっていた要素の参照を保持する（コード上では `triggerRef`）
+2. ダイアログが開いた直後、ダイアログの見出しにフォーカスを当てる（このタイミング以外では見出しにフォーカスを当てることができないようにする）
+3. ダイアログを閉じる直前、`triggerRef` にフォーカスを移動させる
+
+:::details ダイアログのマークアップ
+
+```diff
+"use client";
+
+- import { useId } from "react";
++ import { useEffect, useId } from "react";
+import { A11yButton } from "./button";
+
+interface A11yDialogProps {
+  title: string;
+  open: boolean;
+  onClose: () => void;
+  children: React.ReactNode;
 }
-}, [props.open]);
+
+export const A11yDialog = ({
+  title,
+  open,
+  onClose,
+  children,
+}: A11yDialogProps) => {
+  const titleId = useId();
+
++ // フォーカス管理のためのRef
++ const triggerRef = useRef<HTMLElement | null>(null);
++ const titleRef = useRef<HTMLDivElement | null>(null);
+
++ useEffect(() => {
++   if (open) {
++     // 開く直前にフォーカスがあった要素を保存
++     const active = document.activeElement;
++     if (active instanceof HTMLElement) triggerRef.current = active;
++
++     // タイトルにフォーカス
++     titleRef.current?.focus();
++   } else {
++     triggerRef.current?.focus();
++   }
++ }, [open]);
+
+  if (!open) {
+    return null;
+  }
+
+  return (
+    <div>
+      <div role='dialog' aria-modal aria-labelledby={titleId}>
+        <A11yButton
+          onClick={onClose}
+          aria-label='ダイアログを閉じる'
+        >
+          ×
+        </A11yButton>
+        <div
+          id={titleId}
++         ref={titleRef}
+          role='heading'
+          aria-level={2}
+          // ダイアログ初期表示時に、フォーカスインジケーターが表示されないようにするためのリセットCSSクラス
+          className='outline-none focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0'
+        >
+          {title}
+        </div>
+        {children}
+      </div>
+    </div>
+  );
+};
+
+```
+
+:::
+
 
 #### フォーカストラップを実装する
 
