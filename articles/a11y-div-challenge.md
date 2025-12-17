@@ -5,16 +5,13 @@ type: "idea"
 topics:
   - "a11y"
   - "waiaria"
+  - "keyboard"
+  - "React"
+  - "nextjs"
 published: false
 ---
 
 ※この記事は [アップルワールド Advent Calendar 2025](https://qiita.com/advent-calendar/2025/appleworld) 20 日目の記事です。
-
-メモ
-
-- フォーカストラップに、role="presentation"を付与する（読み上げさせない）
-- 支援技術で機能チェック
--
 
 ## 1. 概要
 
@@ -43,11 +40,19 @@ https://gihyo.jp/book/2023/978-4-297-13366-5
 - div タグ
 - form 系のタグ（input, select, label など）
 
-完成品を先にお見せします。
+ただの画像なので、キーボードだけで操作できるのかまではお伝えできるものではありませんが、完成品を先にお見せしておきます。
+
+一般的によく見る、ただのログインフォームです。
+
+![ログインフォームの完成画面](/images/a11y-div-challenge/overview.png)
+
+左上の「ログインダイアログを開く」を押下すると、ダイアログからもログインすることができるという、二段構えになっています。ログインUIも冗長化させる時代を勝手に到来させました。
+
+![ダイアログからログインする画面](/images/a11y-div-challenge/overview2.png)
 
 ## 2. 準備
 
-本記事では、Nextjs を使用して実装を行います。
+本記事では、Next.js を使用して実装を行います。
 設定はデフォルトのものを使用して進めていきます。（TypeScript, AppRouter, Tailwind, ESLint, etc.）
 
 https://nextjs.org/docs/app/getting-started/installation
@@ -59,6 +64,8 @@ https://zenn.dev/b13o/articles/about-react-hook-form
 ## 3. 汎用コンポーネントの作成
 
 まずは汎用的に使えるコンポーネントを先に実装し、それらを活用してログインフォームを作成する方針で進めていきます。
+
+※ 本記事全体についてですが、ロジックを見やすくするために、添付しているコードは Tailwind でのスタイリングに関する部分をほぼカットして載せています。
 
 ### 3-1. ボタン
 
@@ -283,10 +290,20 @@ A11yButton.displayName = "A11yButton";
 
 :::
 
-#### 完成したボタンコンポーネント
+#### 完成した Button コンポーネント
 
 ここまでで、button タグがデフォルトで持っている機能のうち、ニーズが高そうなものをひと通り実装することができました。
-完成系のコードを置いておきます。
+
+完成形の画面での実装確認にはなりますが、「ログインダイアログを開く」ボタンを
+
+- 1回目は、フォーカスを当てて Enter キーを押下
+- 2回目は、フォーカスを当てて Space キーを押下
+
+で開くことできることを確認できました。
+
+![Button コンポーネントの動作確認](/images/a11y-div-challenge/button.gif)
+
+完成形のコードを置いておきます。
 
 :::details 最終的な Button コンポーネント（スタイルなし）
 
@@ -353,8 +370,6 @@ A11yButton.displayName = "A11yButton";
 
 :::
 
-ここに Button コンポーネントの GIF 入れたいな（スタイルあり）
-
 ### 3-2. ダイアログ
 
 次は Dialog コンポーネントを作成します。shadcn や MUI などの著名な UI コンポーネントライブラリの Dialog でも、 div や span を多用して実装している UI ではあるので、それと似通った実装をすることになります。
@@ -408,11 +423,11 @@ export const A11yDialog = ({
 まずは、ブラウザと支援技術に対してダイアログであることを伝えるために、WAI-ARIA を存分に活用します。Button コンポーネントの時と同じように、どんな UI なのかというのを role 属性で指定します。今回は、`role='dialog'` を指定します。
 useId で一意のキーを作成していますが、こちらはダイアログとその見出しを紐づけることを目的としています。 `role='dialog'` が付与された div タグに指定されている `aria-labelledby` プロパティに指定された値を id に持つ要素の中身がダイアログの見出しとなり、ダイアログを開いたタイミングでスクリーンリーダに読んでもらえます。
 見出しには `<h*>` タグを使用したいところですが、div タグのみという制約があるので、苦し紛れに最大限の努力をして `<h2>` に近づけます。
-ここまで設定することにより、スクリーンリーダは「見出し、ダイアログ」と読んでくれるようになります。`aria-labelledby` の紐付けと同じように、`aria-describedby` を設定することで、「見出し、ダイアログ、説明」を呼んでもらえるように設定することも可能です。
+ここまで設定することにより、スクリーンリーダは「見出し、ダイアログ」と読んでくれるようになります。`aria-labelledby` の紐付けと同じように、`aria-describedby` を設定することで、「見出し、ダイアログ、説明」を読んでもらえるように設定することも可能です。
 
 閉じるボタンに関しては、今回のようにテキストではない記号のような文字列を使用している場合、スクリーンリーダなどの支援技術は、「×、ボタン」と読んでしまうので、分かりやすくするために `aria-label` を設定することで、今回のケースでは「ダイアログを閉じる、ボタン」と読んでもらえるようにしています。
 
-:::details ダイアログのマークアップ
+:::details role 属性と aria-labelledby を付与
 
 ```diff
 "use client";
@@ -481,13 +496,13 @@ export const A11yDialog = ({
 
 見出しに `tabIndex={-1}` を指定することで、tab キーでフォーカスを当てることはできないが、JS での操作によりフォーカスを当てることができるようになります。
 
-:::details ダイアログのマークアップ
+:::details フォーカス管理を実装
 
 ```diff
 "use client";
 
 - import { useId } from "react";
-+ import { useEffect, useId } from "react";
++ import { useEffect, useId, useRef } from "react";
 import { A11yButton } from "./button";
 
 interface A11yDialogProps {
@@ -563,14 +578,14 @@ export const A11yDialog = ({
 
 ここからはフォーカストラップと呼ばれるものを実装します。
 現状の状態では、ダイアログを開いた際にダイアログの見出しにフォーカスを合わせることはできましたが、このフォーカスを Tab キーで移動し続けてみると、ダイアログ外に出てしまい、ダイアログ下の要素にフォーカスを当てることができてしまいます。そこで、ダイアログコンポーネントの DOM の境界に、フォーカス移動の壁となるよう要素を作成することでこれを回避します。その壁のことをフォーカストラップと言います。（ちなみにですが、shadcn と MUI の Dialog コンポーネントにもフォーカストラップらしき、それぞれ span タグと div タグが入っていました）
-実装内容としては直感的で、そのフォーカストラップにフォーカスが当たると、ダイアログ要素の真反対のフォーカス可能要素にフォーカスを渡すようにして、ダイアログないでフォーカス移動が無限ループするようにします。
+実装内容としては直感的で、そのフォーカストラップにフォーカスが当たると、ダイアログ要素の真反対のフォーカス可能要素にフォーカスを渡すようにして、ダイアログ内でフォーカス移動が無限ループするようにします。
 
 :::details フォーカストラップの実装
 
 ```diff
 "use client";
 
-import { useEffect, useId } from "react";
+import { useEffect, useId, useRef } from "react";
 import { A11yButton } from "./button";
 
 interface A11yDialogProps {
@@ -647,6 +662,7 @@ export const A11yDialog = ({
 +       onFocus={() => {
 +         lastFocusableElementRef.current?.focus();
 +       }}
++       role="presentation" // AOMに登録しないようにするため
 +       tabIndex={0}
 +     ></div>
 
@@ -678,6 +694,7 @@ export const A11yDialog = ({
 +       onFocus={() => {
 +         closeBtnRef.current?.focus();
 +       }}
++       role="presentation"
 +       tabIndex={0}
 +     ></div>
     </div>
@@ -792,6 +809,7 @@ export const A11yDialog = ({
         onFocus={() => {
           lastFocusableElementRef.current?.focus();
         }}
+        role="presentation"
         tabIndex={0}
       ></div>
 
@@ -822,6 +840,7 @@ export const A11yDialog = ({
         onFocus={() => {
           closeBtnRef.current?.focus();
         }}
+        role="presentation"
         tabIndex={0}
       ></div>
     </div>
@@ -832,11 +851,15 @@ export const A11yDialog = ({
 
 :::
 
-#### 完成したダイアログコンポーネント
+#### 完成した Dialog コンポーネント
 
 想定以上にコードの分量が多くなってしまいましたが、ここまで実装することで最低限キーボードから開閉の一連の操作をすることが可能になりました。
 
-:::details 最終的なダイアログコンポーネント（スタイルなし）
+完成形の状態で確認すると、ダイアログを開いているうちはダイアログ内でのみフォーカスが移動するようになっていて、閉じた際にはダイアログを開く直前にフォーカスが当たっていた場所に戻ることが確認できます。閉じる操作に関しても、右上の閉じるボタンと Esc キーで閉じることができることを確認できました。
+
+![Dialog コンポーネントの動作確認](/images/a11y-div-challenge/dialog.gif)
+
+:::details 最終的な Dialog コンポーネント（スタイルなし）
 
 ```js
 "use client";
@@ -867,11 +890,11 @@ export const A11yDialog = ({
 }: A11yDialogProps) => {
   const titleId = useId();
   // フォーカス管理のためのRef
-  const dialogRef = (useRef < HTMLDivElement) | (null > null);
-  const triggerRef = (useRef < HTMLElement) | (null > null);
-  const titleRef = (useRef < HTMLDivElement) | (null > null);
-  const closeBtnRef = (useRef < HTMLDivElement) | (null > null);
-  const lastFocusableElementRef = (useRef < HTMLElement) | (null > null);
+  const dialogRef = useRef<HTMLDivElement | null>(null);
+  const triggerRef = useRef<HTMLElement | null>(null);
+  const titleRef = useRef<HTMLDivElement | null>(null);
+  const closeBtnRef = useRef<HTMLDivElement | null>(null);
+  const lastFocusableElementRef = useRef<HTMLElement | null>(null);
 
   const handleEscKeyDown = useCallback(
     (e: KeyboardEvent) => {
@@ -896,7 +919,7 @@ export const A11yDialog = ({
       const root = dialogRef.current;
       if (root) {
         const focusableElements = Array.from(
-          root.querySelectorAll < HTMLElement > focusableSelector
+          root.querySelectorAll<HTMLElement>(focusableSelector)
         ).filter(
           (el) =>
             !el.hasAttribute("disabled") &&
@@ -934,6 +957,7 @@ export const A11yDialog = ({
         onFocus={() => {
           lastFocusableElementRef.current?.focus();
         }}
+        role="presentation"
         tabIndex={0}
       ></div>
       <div ref={dialogRef} role='dialog' aria-modal aria-labelledby={titleId}>
@@ -962,6 +986,7 @@ export const A11yDialog = ({
         onFocus={() => {
           closeBtnRef.current?.focus();
         }}
+        role="presentation"
         tabIndex={0}
       ></div>
     </div>
@@ -971,8 +996,6 @@ export const A11yDialog = ({
 
 :::
 
-GIF 入れたいな
-
 ### 3-3. エラー
 
 次はエラー文を表示させることに特化したコンポーネントを作成します。用途としてはバリデーションエラーの表示です。
@@ -981,7 +1004,7 @@ GIF 入れたいな
 {error.message && <span>{error.message}</span>}
 ```
 
-ClaudeCode 含め、AI に生成させるエラー文の表示ロジックは一般的に上記のような形式になるかと思いますが、これだと表示非表示が切り替わる度に AOM に登録されたり登録が外れたりするので、エラー文の読み上げを本当の意味でコントロールすることができません。他のコンテンツの読み上げに被せるような形でエラーを読み上げてもらうのでも問題ないということであれば上記の実装でも問題ありませんが。（AOM については以下参考）
+Claude Code 含め、AI に生成させるエラー文の表示ロジックは一般的に上記のような形式になるかと思いますが、これだと表示非表示が切り替わる度に AOM に登録されたり登録が外れたりするので、エラー文の読み上げを本当の意味でコントロールすることができません。他のコンテンツの読み上げに被せるような形でエラーを読み上げてもらうのでも問題ないということであれば上記の実装でも問題ありませんが。（AOM については以下参考）
 
 https://qiita.com/fsd-tetsu/items/d28e9f910ad9c62b6ef4
 
@@ -997,7 +1020,16 @@ interface A11yErrorProps extends React.HTMLAttributes<HTMLDivElement> {
 
 /** idプロパティを渡して、紐づけることを推奨する */
 export const A11yError = ({ errorText, ...rest }: A11yErrorProps) => {
-  return <div {...rest}>❗️エラー：{errorText}</div>;
+  return (
+    <div {...rest}>
+      {errorText && 
+        <>
+          ❗️
+          エラー：{errorText}
+        </>
+      }
+    </div>
+  );
 };
 ```
 
@@ -1006,10 +1038,10 @@ export const A11yError = ({ errorText, ...rest }: A11yErrorProps) => {
 #### 支援技術が適切にエラーを扱えるようにする
 
 エラーを支援技術が適切に管理することを目的として、WAI-ARIA を活用します。
-`aria-live` 属性を設定することで、子要素の変更を検知して、スクリーンリーダなどの支援技術が読み上げるようにします。今回が他の要素を読み上げている場合は、そちらの終了を待ってから読み上げができるように、`polite` という値を設定します。`aria-atomic` をつけるのは、変更差分しか読み上げないところを、その直前の「エラー：」の部分もセットで読んでもらうことを目的としています。
+`aria-live` 属性を設定することで、子要素の変更を検知して、スクリーンリーダなどの支援技術が読み上げるようにします。今回は他の要素を読み上げている場合は、そちらの終了を待ってから読み上げができるように、`polite` という値を設定します。`aria-atomic` をつけるのは、変更差分しか読み上げないところを、その直前の「エラー：」の部分もセットで読んでもらうことを目的としています。
 「❗️」は読み上げなどは全く不要（寧ろノイズ）なので念の為 `aria-hidden` を付与しておき、AOM に登録されないようにしておきます。
 
-:::details 最終的な Error コンポーネント（スタイルなし）
+:::details aria-live と aria-atomic を付与
 
 ```diff
 interface A11yErrorProps extends React.HTMLAttributes<HTMLDivElement> {
@@ -1023,13 +1055,14 @@ export const A11yError = ({ errorText, ...rest }: A11yErrorProps) => {
       {...rest}
 +     aria-live='polite'
 +     aria-atomic
-+     className={`${rest.className ?? ""} ${
-+       errorText ? "" : "h-0 overflow-hidden"
-+     }`}
     >
--     ❗️
-+     <span aria-hidden>❗️</span>
-      エラー：{errorText}
+      {errorText && 
+        <>
+-         ❗️
++         <div aria-hidden className="inline">❗️</div>
+          エラー：{errorText}
+        </>
+      }
     </div>
   );
 };
@@ -1037,11 +1070,12 @@ export const A11yError = ({ errorText, ...rest }: A11yErrorProps) => {
 
 :::
 
-#### 完成したエラーコンポーネント
+#### 完成した Error コンポーネント
 
-GIF 入れたいな
+スクリーンリーダへの表示の仕方を最大限コントロールしたエラー表示を実装できました。
+動作確認は、後続の Form 系コンポーネントを作成してから行います。
 
-:::details 最終的なボタンコンポーネント（スタイルなし）
+:::details 最終的な Error コンポーネント（スタイルなし）
 
 ```js
 interface A11yErrorProps extends React.HTMLAttributes<HTMLDivElement> {
@@ -1055,15 +1089,17 @@ export const A11yError = ({ errorText, ...rest }: A11yErrorProps) => {
       {...rest}
       aria-live='polite'
       aria-atomic
-      className={`${rest.className ?? ""} ${
-        errorText ? "" : "h-0 overflow-hidden"
-      }`}
     >
-      <span aria-hidden>❗️</span>
-      エラー：{errorText}
+      {errorText &&
+        <>
+          <div aria-hidden className="inline">❗️</div>
+          エラー：{errorText}
+        </>
+      }
     </div>
   );
 };
+
 ```
 
 :::
@@ -1120,7 +1156,7 @@ A11yInput.displayName = "A11yInput";
 エラーが起こっていることをスクリーンリーダに伝えるためには `aria-invalid` を設定します。こちらが `true` である場合に、エラーが発生しているフォームであると検知され、そのエラー内容は `aria-describedby` に紐付いている要素の中身が読まれます。なので下記の設定では、エラー処理の手順として、以下のようになっています。
 
 1. エラーが発生した際に、順次エラー内容がスクリーンリーダに読まれる
-2. スクリーンリーダの機能を用いて、エラーが発生しているフォームにジャンブする
+2. スクリーンリーダの機能を用いて、エラーが発生しているフォームにジャンプする
 3. フォーカスを当てると、再度エラー内容が読まれる
 
 :::details エラー内容を支援技術に適切に伝える
@@ -1168,9 +1204,9 @@ A11yInput.displayName = "A11yInput";
 
 #### 完成した Input コンポーネント
 
-GIF 入れたいな
+エラーが発生した際に、スクリーンリーダが適切にエラーを表示させることができるように実装することができました。
 
-:::details 最終的なボタンコンポーネント（スタイルなし）
+:::details 最終的な Input コンポーネント（スタイルなし）
 
 ```js
 "use client";
@@ -1215,7 +1251,7 @@ A11yInput.displayName = "A11yInput";
 ### 3-5. その他のフォーム
 
 これ以外に Select コンポーネントと Checkbox コンポーネントを作成しました。
-基本的な構造は Input と同様なので、ここでは完成系だけ載せておきます。
+基本的な構造は Input と同様なので、ここでは完成形だけ載せておきます。
 
 :::details 最終的な Select コンポーネント（スタイルなし）
 
@@ -1319,7 +1355,7 @@ A11yCheckbox.displayName = "A11yCheckbox";
 ここでは、form タグの機能を表現するようなコンポーネントを作成します。
 例の如く、土台だけ作成しています。現状では、ただ div タグでラップするだけのコンポーネントになっています。無限に包みたくなりますね。
 
-:::details cs
+:::details Form コンポーネントの土台
 
 ```js
 "use client";
@@ -1351,9 +1387,10 @@ A11yForm.displayName = "A11yForm";
 
 #### 支援技術にフォームであることを伝える
 
-「ラベル名、フォーム」のように読んでもらうことができる
+Button コンポーネントや Dialog コンポーネントと同様に、`role='form'` を付与することで、支援技術にフォームであることを伝えます。
+加えて、`aria-label` を設定することで、スクリーンリーダは「ラベル名、フォーム」のように読み上げてくれるようになります。スクリーンリーダにはページ内のフォームを一覧表示してジャンプする機能があるものも多く、この設定により目的のフォームを見つけやすくなります。
 
-:::details dsa
+:::details role 属性と aria-label を付与
 
 ```diff
 "use client";
@@ -1390,7 +1427,10 @@ A11yForm.displayName = "A11yForm";
 
 #### フォーム内フォーカス時に、Enter キー押下で Submit できるようにする
 
-:::details dsa
+ネイティブの form タグでは、フォーム内の input 要素などにフォーカスがある状態で Enter キーを押下すると、フォームが送信されます。この挙動を div タグで再現するために、`onKeyDown` イベントを設定します。
+実装のポイントとして、`e.nativeEvent.isComposing` のチェックを行っています。これは、日本語入力などの変換確定時に Enter キーが押されることを考慮したもので、変換中の Enter キー押下では送信されないようにしています。
+
+:::details Enter キー押下で Submit できるようにする
 
 ```diff
 "use client";
@@ -1435,6 +1475,15 @@ A11yForm.displayName = "A11yForm";
 ```
 
 :::
+
+#### 完成した Form コンポーネント
+
+ここまでの実装で、div タグを使ってフォームとしての基本的な機能を持たせることができました。スクリーンリーダにフォームとして認識され、キーボードからの Enter キー送信にも対応しています。
+
+フォーム関連の実装がひと通り終わったので、動作を確認します。
+今回はスクリーンリーダでの表示も確認できます。
+
+![Form コンポーネントの動作確認](/images/a11y-div-challenge/form.gif)
 
 :::details 最終的な Form コンポーネント
 
@@ -1481,10 +1530,122 @@ A11yForm.displayName = "A11yForm";
 
 :::
 
-## 支援技術
+## 4. 完成品
 
-### スクリーンリーダ（Mac）
+ここまで汎用的に使用できるコンポーネントを作成してきましたが、最後にこれらを組み合わせて記事の始めにお見せしたログインフォームを実装します。
 
-Mac には、デフォルトで VoiceOver というスクリーンリーダのアプリが入っています。「Command + F5」というショートカットコマンドで起動することが可能です。
+タイトルの通り、キーボードからの操作だけで操作できることが確認できます。
+※ 乗っ取られた時に出てきそうなデザインの完了画面ですが、気にしないでください。
+
+![完成品の動作確認（メイン画面からログイン）](/images/a11y-div-challenge/comp1.gif)
+
+こちらはダイアログ経由でログインフォームを Submit します。
+
+![完成品の動作確認（ダイアログからログイン）](/images/a11y-div-challenge/comp2.gif)
+
+実装内容は以下の通りです。
+
+:::details 完成したログインフォーム
+
+```js
+"use client";
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { A11yDialog } from "./_components/dialog";
+import { A11yButton } from "./_components/button";
+import { A11yInput } from "./_components/input";
+import { A11ySelect } from "./_components/select";
+import { A11yCheckbox } from "./_components/checkbox";
+import { A11yForm } from "./_components/form";
+import { loginSchema, type LoginFormValues } from "./schema";
+
+const languageOptions = [
+  { value: "ja", label: "日本語" },
+  { value: "en", label: "English" },
+  { value: "zh", label: "中文" },
+];
+
+export default function Sample() {
+  const [isOpen, setIsOpen] = useState(false);
+  const router = useRouter();
+
+  const handleLogin = () => {
+    router.push("/sample-complete");
+  };
+
+  return (
+    <div>
+      <div role="banner">
+        <A11yButton onClick={() => setIsOpen(true)}>
+          ログインダイアログを開く
+        </A11yButton>
+      </div>
+      <div role="main">
+        <LoginForm onSubmit={handleLogin} />
+      </div>
+      {/* <div role="contentinfo">フッターはここ</div> */}
+      <A11yDialog
+        open={isOpen}
+        onClose={() => setIsOpen(false)}
+        title="ログイン"
+      >
+        <LoginForm onSubmit={handleLogin} />
+      </A11yDialog>
+    </div>
+  );
+}
+
+const LoginForm = ({ onSubmit }: { onSubmit: () => void }) => {
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<LoginFormValues>({
+    resolver: zodResolver(loginSchema),
+  });
+
+  return (
+    <A11yForm onSubmit={handleSubmit(onSubmit)} ariaLabel="ログインフォーム">
+      <A11yInput
+        label="メールアドレス"
+        type="email"
+        errorText={errors.email?.message}
+        {...register("email")}
+      />
+      <A11yInput
+        label="パスワード"
+        type="password"
+        errorText={errors.password?.message}
+        {...register("password")}
+      />
+      <A11ySelect
+        label="言語"
+        options={languageOptions}
+        errorText={errors.language?.message}
+        {...register("language")}
+      />
+      <A11yCheckbox
+        label="ログイン状態を保持する"
+        {...register("rememberMe")}
+      />
+      <A11yButton onClick={handleSubmit(onSubmit)}>
+        ログイン
+      </A11yButton>
+    </A11yForm>
+  );
+}
+```
+
+:::
 
 ## まとめ
+
+これまで何となく使っていたWAI-ARIAを、明確に意図を持って使用できるようになってきたような気がしました。あくまで実験的な実装ではあるので、まだまだ磨ける部分や修正しないといけない部分すらあるかと思いますが、とにかくWAI-ARIAを肌身で感じることができたような気がしました。
+動作の検証には、Mac にデフォルトで入っている VoiceOver というスクリーンリーダを使いました。このような支援技術を使用するのは初めての経験だったので、エンジニアとして働いていながらも、まだまだ知らないことが多いなと改めて感じました。それと同時に、様々なユーザにできる限り不便なく使用してもらえるWEBアプリを作ることができるようなエンジニアを目指さなければならないなとも感じました。（巷でよく耳にする、プログレッシブエンハンスメント等のユーザビリティ領域も含め）
+
+↓ 今回作成したアプリのリポジトリ
+
+https://github.com/IJproject/a11y-challenge-app
