@@ -1,5 +1,5 @@
 ---
-title: "最終的に行き着いたReactのアーキテクチャ設計"
+title: "最終的に辿り着いたReactのアーキテクチャ設計"
 emoji: "📄"
 type: "tech"
 topics:
@@ -15,48 +15,58 @@ published: false
 
 ## TL;DR
 
-```ts:calc.ts
-export const add = (a: number, b: number) => a + b
-```
+- テスト容易性の高いContainer/Presentationalパターンを採用した
+- 関数型アーキテクチャの思想を取り入れた
+- 最大限のコロケーションを意識した
+- テスト駆動開発を導入した
+- Orvalを導入し、API準拠のクライアントを使用するようにした
 
-```ts:calc.test.ts
-import { add } from "./calc"
-/** @see {@link add} */
-describe("add", () => {
-  const TEST_CASES = [
-    {
-      title: "テストタイトル",
-      args: [2, 3],
-      expected: 5
-    }
-  ]
+## Container/Presentationalパターン
 
-  it.each(TEST_CASES)("$title", ({args, expected}) => {
-    expect(add(...args)).toEqual(expected)
-  })
-})
+### Container/Presentationalパターンの概要
 
-```
+### 関数型アーキテクチャの概要
 
-## 一般的な書き方
+### フォルダ構成
 
-試しに、ChatGPT にサクッとテストコードを作成してみてもらいました。
-大体こんなもんですよね。
+### 依存関係
 
-```ts
-// add.test.ts
-import { describe, it, expect } from "vitest";
-import { add } from "./add";
+種別の依存関係
 
-describe("add", () => {
-  it("正の整数同士を足し算できる", () => {
-    expect(add(2, 3)).toBe(5);
-  });
-  it("負の数を含む場合でも正しく計算できる", () => {
-    expect(add(-1, 5)).toBe(4);
-  });
-  it("0を含む場合でも正しく計算できる", () => {
-    expect(add(0, 7)).toBe(7);
-  });
-});
-```
+### コロケーション
+
+### カスタムフックとの共存
+
+### ロジックのスコープ極小化
+
+高階関数パターン
+
+## APIとの連携
+
+### APIクライアントの自動生成
+
+### 依存関係逆転
+
+コンポーネント設計でも使用される概念
+抽象化により、自動生成コードに対する依存度を下げる（APIに対しても）
+
+## テスト駆動開発
+
+単体テストは作成したモジュールが正しく動く・仕様漏れがないことを防ぐ
+結合テストは、アプリケーションとしての機能に不備がないかをチェックする
+
+### 単体テスト
+
+ヘルパーとpresentational
+
+### 結合テスト
+
+### ContainerとPresentationalのテスト境界
+
+### E2Eテスト
+
+### テスト実行
+
+## その他
+
+### ライブラリのラップ
