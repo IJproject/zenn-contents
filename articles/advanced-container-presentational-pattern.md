@@ -418,9 +418,58 @@ features/
 
 #### デコレータパターン（高階関数）
 
-<!-- memo: sort系の実装を例に、高階関数パターンを紹介する。sortの実行は親Container側で行い、sortLogic（compareFn）の注入は子Container側で行う。sortOptionsの各選択肢にcompareFnを持たせるイメージ。 
-つまり、子側からロジックを注入するようなケースを例として示したい
--->
+前セクションの`sortUsers`では、比較ロジックが関数内部にハードコードされていました。高階関数を使うと、ソートの「実行」と「ロジック（compareFn）」を分離できます。
+
+各ソートオプションに`compareFn`を持たせ、選択されたキーに応じて取り出す構成にします。
+
+```tsx
+// 関数型コア
+type SortOption<T> = {
+  key: string;
+  label: string;
+  compareFn: (a: T, b: T) => number;
+};
+
+const userSortOptions: SortOption<User>[] = [
+  {
+    key: "name",
+    label: "名前順",
+    compareFn: (a, b) => a.name.localeCompare(b.name),
+  },
+  {
+    key: "createdAt",
+    label: "登録日順",
+    compareFn: (a, b) =>
+      new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
+  },
+];
+
+const userCompareFn = (sortKey: string) =>
+  userSortOptions.find((o) => o.key === sortKey)!.compareFn;
+```
+
+```tsx
+// Container
+export const UserListContainer = ({ users }: { users: User[] }) => {
+  const [sortKey, setSortKey] = useState<SortKey>("name");
+
+  const compareFn = userCompareFn(sortKey);
+  const displayUsers = [...users].sort(compareFn);
+
+  return (
+    <UserListPresentational
+      users={displayUsers}
+      sortKey={sortKey}
+      sortOptions={userSortOptions}
+      onChangeSortKey={setSortKey}
+    />
+  );
+};
+```
+
+Container内で`[...users].sort(compareFn)`と書けるようになり、「何でソートしているか」が一目でわかります。比較ロジックはsortOptionsの各`compareFn`に閉じているため、ソート条件を追加する場合もsortOptionsに選択肢を追加するだけで済みます。
+
+`SortOption<T>`はジェネリクスで定義されているため、ユーザー以外のエンティティにもそのまま再利用できます。前セクションの親子Container構成と組み合わせると、親Container側でソートの実行を、子Container側でcompareFnの注入を担う——という責務の分離が自然に実現します。
 
 
 #### ContainerコンポーネントとPresentationalコンポーネントでテスト範囲が被る問題
